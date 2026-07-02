@@ -31,17 +31,7 @@ def main():
     # 3. Logika obsługi komend
     if args.command == "build":
         config_path = Path(args.path)
-        if not config_path.exists():
-            log.error(f"Nie znaleziono pliku: [bold red]{config_path}[/bold red]")
-            sys.exit(1)
-
-        try:
-            config = modules.parsing.parse_cbuild(file_path=config_path)
-            modules.parsing.build_project(config, log)
-        except Exception as e:
-            log.error(f"Wystąpił błąd podczas budowania: [bold red]{e}[/bold red]")
-            sys.exit(1)
-
+        modules.parsing.build_project(config_path)
     elif args.command == "clean":
         target_dir = Path(args.path)
         log.info(f"Czyszczenie folderu: [bold yellow]{target_dir}[/bold yellow]")

@@ -1,69 +1,63 @@
-import logging
 import subprocess
 from pathlib import Path
 
+import tomllib
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress
 
-def parse_cbuild(file_path: str) -> dict:
-    """Parsuje plik .cbuild i zwraca słownik konfiguracji."""
-    config = {}
+console = Console()
+
+
+def load_config(file_path):
     path = Path(file_path)
-
     if not path.exists():
-        raise FileNotFoundError(f"Nie znaleziono pliku konfiguracji: {file_path}")
-
-    with open(path, "r") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if ":" in line:
-                key, value = line.split(":", 1)
-                # Poprawka: dodano nawiasy () do strip()
-                config[key.strip()] = value.strip().split()
-    return config
+        console.print(f"[bold red]Błąd:[/bold red] Plik {file_path} nie istnieje.")
+        return None
+    with open(path, "rb") as f:
+        return tomllib.load(f)
 
 
-def build_project(config: dict, logger: logging.Logger) -> bool:
-    """Buduje projekt C na podstawie konfiguracji."""
-    sources = config.get("src", [])
-    out_list = config.get("out", ["app"])
-    output = out_list[0] if out_list else "app"
+def build_project(path):
+    config = load_config(path)
+    if not config:
+        return
 
-    object_files = []
+    project_name = config["project"]["name"]
+    cflags = config["build"]["cflags"]  # Zakładam, że to lista w TOML
+    compiler = config["build"]["compiler"]
+    files = config["build"]["files"]
 
-    for src in sources:
-        # Sprawdzenie czy plik źródłowy istnieje
-        if not Path(src).exists():
-            logger.error(f"Plik źródłowy nie istnieje: [bold red]{src}[/bold red]")
-            return False
-
-        obj = src.replace(".c", ".o")
-        logger.info(
-            f"Kompilowanie: [bold cyan]{src}[/bold cyan] -> [bold green]{obj}[/bold green]"
+    console.print(
+        Panel(
+            f"[bold blue]Budowanie projektu:[/bold blue] {project_name}", expand=False
         )
-
-        res = subprocess.run(
-            ["gcc", "-c", src, "-o", obj], capture_output=True, text=True
-        )
-
-        if res.returncode != 0:
-            logger.error(f"Błąd kompilacji pliku [bold red]{src}[/bold red]")
-            logger.debug(res.stderr)
-            return False
-
-        object_files.append(obj)
-
-    logger.info(
-        f"Linkowanie: [bold yellow]{' '.join(object_files)}[/bold yellow] -> [bold magenta]{output}[/bold magenta]"
     )
 
-    res = subprocess.run(
-        ["gcc"] + object_files + ["-o", output], capture_output=True, text=True
-    )
+    with Progress() as progress:
+        task = progress.add_task("[green]Kompilacja...", total=len(files))
 
-    if res.returncode == 0:
-        logger.info("[bold green]Projekt zbudowany pomyślnie![/bold green]")
-        return True
-    else:
-        logger.error(f"Błąd linkowania: {res.stderr}")
-        return False
+        objs = []
+        for i in files:
+            obj = i.replace(".c", ".o")
+            objs.append(obj)
+
+            # Rich: pasek postępu aktualizuje się w pętli
+            progress.update(task, description=f"Kompilowanie [yellow]{i}[/yellow]...")
+
+            # *cflags rozpakowuje listę do argumentów
+            cmd = [compiler, "-c", i, "-o", obj] + cflags
+
+            result = subprocess.run(cmd, capture_output=True, text=True)
+
+            if result.returncode != 0:
+                console.print(f"[bold red]Błąd w pliku {i}![/bold red]")
+                console.print(result.stderr)
+                return
+            progress.advance(task)
+
+    console.print("[bold cyan]Linkowanie...[/bold cyan]")
+    link_cmd = ["gcc"] + objs + ["-o", "moj_program"]
+    subprocess.run(link_cmd)
+
+    console.print("[bold green]✔ Budowanie zakończone sukcesem![/bold green]")
