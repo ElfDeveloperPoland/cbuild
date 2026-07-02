@@ -5,6 +5,8 @@ from pathlib import Path
 import modules.parsing
 import modules.utils
 
+# test
+
 
 def main():
     # 1. Konfiguracja loggera (zanim cokolwiek się zacznie)
