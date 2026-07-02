@@ -1,0 +1,2 @@
+src: test/main.c
+out: test_app

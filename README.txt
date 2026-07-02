@@ -1,0 +1,1 @@
+cbuild prosty system budowania plikow .C (narazie tylko ich z powodu zebym nie dostal wypalenia) projekt dziala na licencji MIT i narazie jest w wersji 0.1 i wesprzec projekt mozesz klikajac sponsor na moim profilu (dzk za to)
