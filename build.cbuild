@@ -1,2 +1,6 @@
-src: test/main.c
-out: test_app
+[project]
+name = "test"
+[build]
+cflags=["-Wall"]
+compiler="gcc"
+files=["test/main.c"]
